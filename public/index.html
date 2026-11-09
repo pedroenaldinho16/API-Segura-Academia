@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Treinos | API Segura</title>
+  <style>
+    :root { font-family:system-ui,Segoe UI,Arial,sans-serif; color:#172235; background:#f3f6fb }
+    *{box-sizing:border-box} body{margin:0} header{background:#13253f;color:white;padding:28px max(20px,calc((100vw - 960px)/2))} header h1{margin:0 0 5px;font-size:1.9rem} header p{margin:0;color:#c8d8ec}
+    main{max-width:960px;margin:24px auto;padding:0 16px;display:grid;gap:20px} section{background:white;border:1px solid #dbe2ed;border-radius:14px;padding:22px;box-shadow:0 4px 18px #13253f08}
+    h2{margin:0 0 15px;font-size:1.15rem} .colunas{display:grid;grid-template-columns:1fr 1fr;gap:20px} label{font-size:.9rem;font-weight:600;display:block;margin-bottom:10px} input,textarea{font:inherit;width:100%;margin-top:4px;border:1px solid #bdc8d8;padding:10px;border-radius:7px} textarea{min-height:90px;resize:vertical}
+    button{font:inherit;background:#2463da;color:white;border:0;border-radius:7px;padding:10px 15px;cursor:pointer;font-weight:600}button:disabled{opacity:.5;cursor:not-allowed}button.secondary{background:#536680}button.danger{background:#b23b42} .actions{display:flex;gap:9px;flex-wrap:wrap}
+    .treino{border:1px solid #e0e6f0;padding:13px;border-radius:9px;margin-top:10px} .treino h3{margin:0 0 4px}.muted{color:#58687b;font-size:.9rem} .pill{display:inline-block;border-radius:100px;padding:4px 10px;background:#e4efff;font-size:.75rem;font-weight:700}#aviso{white-space:pre-wrap;min-height:46px;border-radius:7px;padding:12px;background:#e9eef6;font-family:monospace}
+    @media(max-width:680px){.colunas{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<header><h1>API Segura • Academia</h1><p>Demonstração de autenticação JWT e autorização por dono / perfil</p></header>
+<main>
+  <section><h2>1. Entre com um usuário de teste</h2>
+    <div class="colunas"><div><label>E-mail<input id="email" type="email" value="joao@academia.test" autocomplete="username"></label></div><div><label>Senha<input id="senha" type="password" value="Treino@123" autocomplete="current-password"></label></div></div>
+    <div class="actions"><button id="entrar">Entrar</button><button class="secondary" id="sair">Sair (limpar token)</button><button class="secondary" id="me">GET /auth/me</button></div>
+    <p class="muted">Teste também <code>maria@academia.test</code> e <code>admin@academia.test</code> com a mesma senha. O token fica apenas em memória nesta tela (não em localStorage).</p>
+    <p id="sessao" class="muted">Sessão: desconectado.</p>
+  </section>
+  <section><h2>2. Cadastre um treino</h2>
+    <label>Título<input id="titulo" value="Treino C - Costas"></label>
+    <label>Objetivo<input id="objetivo" value="Hipertrofia"></label>
+    <label>Exercícios<textarea id="exercicios">Remada 3x10; barra fixa 3x8</textarea></label>
+    <div class="actions"><button id="criar">Criar treino</button><button class="secondary" id="listar">Listar treinos</button><button class="secondary" id="usuarios">Listar usuários (ADMIN)</button></div>
+    <div id="treinos"></div>
+  </section>
+  <section><h2>3. Resultado das requisições</h2><div id="aviso" aria-live="polite">Faça login para começar.</div><p class="muted">401 = sem autenticação; 403 = autenticado sem permissão; 200/201 = sucesso. Depois de 5 tentativas de login em 15 minutos, o limite retorna 429.</p></section>
+</main>
+<script>
+  let token = "";
+  let perfil = "";
+  const $ = id => document.getElementById(id);
+  function aviso(status, corpo){$("aviso").textContent=`HTTP ${status}\n${JSON.stringify(corpo,null,2)}`}
+  async function api(rota, metodo="GET", body) {
+    try{
+      const headers={};
+      if(token) headers.Authorization=`Bearer ${token}`;
+      if(body) headers["Content-Type"]="application/json";
+      const resposta = await fetch(rota,{method:metodo,headers,body:body?JSON.stringify(body):undefined});
+      const json=await resposta.json();
+      aviso(resposta.status,json);
+      return {resposta,json};
+    } catch(e){aviso("ERRO",{erro:"Servidor indisponível"});return null}
+  }
+  $("entrar").onclick=async()=>{
+    const res=await api("/auth/login","POST",{email:$("email").value,senha:$("senha").value});
+    if(res?.resposta.ok){token=res.json.token;perfil=res.json.usuario.role;$("sessao").textContent=`Conectado: ${res.json.usuario.nome} (${perfil})`;}
+  };
+  $("sair").onclick=()=>{token="";perfil="";$("sessao").textContent="Sessão: desconectado.";aviso(200,{mensagem:"Token removido da memória. Atenção: um JWT já emitido continua válido no servidor até expirar."});};
+  $("me").onclick=()=>api("/auth/me");
+  $("criar").onclick=async()=>{
+    const res=await api("/treinos","POST",{titulo:$("titulo").value,objetivo:$("objetivo").value,exercicios:$("exercicios").value});
+    if(res?.resposta.ok) $("listar").click();
+  };
+  $("listar").onclick=async()=>{
+    const res=await api("/treinos");if(!res?.resposta.ok)return;
+    $("treinos").replaceChildren();
+    for(const t of res.json.treinos){
+      const box=document.createElement("div");box.className="treino";
+      const h=document.createElement("h3");h.textContent=t.titulo;
+      const desc=document.createElement("p");desc.className="muted";desc.textContent=`#${t.id} • ${t.objetivo} • ${t.exercicios} • dono: ${t.owner.nome}`;
+      const del=document.createElement("button");del.className="danger";del.textContent="Excluir";
+      del.onclick=async()=>{const resp=await api(`/treinos/${t.id}`,"DELETE");if(resp?.resposta.ok) $("listar").click();};
+      box.append(h,desc,del);$("treinos").append(box);
+    }
+  };
+  $("usuarios").onclick=()=>api("/users");
+</script>
+</body>
+</html>

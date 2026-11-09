@@ -1,0 +1,37 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  nome      String
+  email     String   @unique
+  password  String
+  role      Role     @default(USER)
+  treinos   Treino[]
+  createdAt DateTime @default(now())
+}
+
+model Treino {
+  id         Int      @id @default(autoincrement())
+  titulo     String
+  objetivo   String
+  exercicios String
+  concluido  Boolean  @default(false)
+  ownerId    Int
+  owner      User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([ownerId])
+}

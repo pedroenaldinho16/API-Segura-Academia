@@ -1,0 +1,126 @@
+### Requer extensão REST Client do VS Code, ou importe as chamadas no Thunder Client.
+### Inicie a API com npm run dev. Leia README para capturar tokens e IDs.
+@baseUrl = http://localhost:3000
+@tokenJoao = COLE_TOKEN_DO_JOAO_AQUI
+@tokenMaria = COLE_TOKEN_DA_MARIA_AQUI
+@tokenAdmin = COLE_TOKEN_DO_ADMIN_AQUI
+@idTreinoMaria = SUBSTITUA_PELO_ID_REAL_DO_TREINO_DA_MARIA
+
+### T1 — Cadastro válido: 201, sem password
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "nome": "Aluno Teste",
+  "email": "alunoteste@academia.test",
+  "senha": "Senha@123",
+  "role": "ADMIN"
+}
+
+### T2 — Mesmo e-mail: 409
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "nome": "Aluno Repetido",
+  "email": "alunoteste@academia.test",
+  "senha": "Senha@123"
+}
+
+### LOGIN João: copie o token para @tokenJoao
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{"email":"joao@academia.test","senha":"Treino@123"}
+
+### LOGIN Maria: copie o token para @tokenMaria
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{"email":"maria@academia.test","senha":"Treino@123"}
+
+### LOGIN ADMIN: copie o token para @tokenAdmin
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{"email":"admin@academia.test","senha":"Treino@123"}
+
+### T3 — Login com senha incorreta: 401
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{"email":"joao@academia.test","senha":"ERRADA"}
+
+### T4 — Rota protegida sem token: 401
+GET {{baseUrl}}/auth/me
+
+### R6 extra — Formato Bearer incorreto: 401
+GET {{baseUrl}}/auth/me
+Authorization: Token abc
+
+### R6 extra — Token inválido: 401
+GET {{baseUrl}}/auth/me
+Authorization: Bearer aaa.bbb.ccc
+
+### T5 — Rota com token válido: 200
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{tokenJoao}}
+
+### T6 — Criação tentando forjar dono no body: 201 e ownerId = João
+POST {{baseUrl}}/treinos
+Authorization: Bearer {{tokenJoao}}
+Content-Type: application/json
+
+{
+  "titulo":"Treino de ombro",
+  "objetivo":"Força",
+  "exercicios":"Desenvolvimento 3x8; elevação lateral 3x12",
+  "ownerId":999999
+}
+
+### Descubra ID do treino da Maria (ADMIN vê todos): 200
+GET {{baseUrl}}/treinos
+Authorization: Bearer {{tokenAdmin}}
+
+### T7 — João edita treino da Maria: 403 (substitua o ID acima)
+PUT {{baseUrl}}/treinos/{{idTreinoMaria}}
+Authorization: Bearer {{tokenJoao}}
+Content-Type: application/json
+
+{"titulo":"Tentativa de alterar treino alheio"}
+
+### T8 — USER tenta rota ADMIN: 403
+GET {{baseUrl}}/users
+Authorization: Bearer {{tokenJoao}}
+
+### T9 — ADMIN acessa rota ADMIN: 200
+GET {{baseUrl}}/users
+Authorization: Bearer {{tokenAdmin}}
+
+### T10 — Recurso inexistente: 404
+DELETE {{baseUrl}}/treinos/999999
+Authorization: Bearer {{tokenJoao}}
+
+### Exemplo de edição por dono: 200 (ajuste ID)
+# PUT {{baseUrl}}/treinos/1
+# Authorization: Bearer {{tokenJoao}}
+# Content-Type: application/json
+#
+# {"concluido":true}
+
+### Rota ADMIN modifica perfil (ajuste o ID)
+# PATCH {{baseUrl}}/users/2/role
+# Authorization: Bearer {{tokenAdmin}}
+# Content-Type: application/json
+#
+# {"role":"ADMIN"}
+
+### EXTRA — Trocar senha: 200
+PATCH {{baseUrl}}/auth/senha
+Authorization: Bearer {{tokenJoao}}
+Content-Type: application/json
+
+{"senhaAtual":"Treino@123","novaSenha":"SenhaNova@123"}
+
+### EXTRA — 429: faça 6 POSTs /auth/login em 15 minutos; o sexto será bloqueado.
+### IMPORTANTE: após executar o teste de troca de senha, João entra com "SenhaNova@123".
