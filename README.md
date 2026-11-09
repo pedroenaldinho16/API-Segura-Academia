@@ -1,8 +1,8 @@
 # API Academia — Projeto API Segura
 
 **ETEC de Campo Limpo Paulista (ETECAMP) | 3º AI | 4º bimestre**  
-**Integrantes:** [Nome completo 1] · [Nome completo 2] · [Nome completo 3]  
-**Tema escolhido:** Academia (opção 7 do enunciado; confirmar que não foi reservado por outro grupo).  
+**Integrantes:** [Murilo Henrique Almeida de Santana] · [Pedro Gabriel Farias da Silva] · [Gustavo Henrique de Souza Faria]  
+**Tema escolhido:** Academia.  
 **Tecnologias:** Node.js, Express 5, Prisma ORM 7, SQLite, JWT (`jsonwebtoken`), `bcryptjs`.
 
 ## 1. Sobre o projeto
